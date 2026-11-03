@@ -1,0 +1,37 @@
+#!/bin/sh
+# notizeditor – opens text files in NotizEditor (set up via NotizEditor → Install Command Line Tool).
+#   notizeditor file.txt [more files]   open files (missing ones are created)
+#   notizeditor --line 12 file.txt      open at line 12
+#   echo Hello | notizeditor            piped text becomes a new note
+APP_ID=de.stefanhogh.notizeditor
+
+hex() { printf '%s' "$1" | /usr/bin/xxd -p | /usr/bin/tr -d '\n'; }
+
+case "$1" in
+    -h|--help)
+        sed -n '2,5s/^# \{0,1\}//p' "$0"
+        exit 0 ;;
+esac
+
+LINE=""
+if [ "$1" = "--line" ] || [ "$1" = "-l" ]; then
+    LINE="$2"
+    shift 2
+fi
+
+if [ $# -eq 0 ]; then
+    if [ -t 0 ]; then exec /usr/bin/open -b "$APP_ID"; fi
+    TMP=$(/usr/bin/mktemp -t notizeditor) || exit 1
+    /bin/cat > "$TMP"
+    exec /usr/bin/open -b "$APP_ID" "notizeditor://new?path=$(hex "$TMP")"
+fi
+
+for FILE in "$@"; do
+    case "$FILE" in
+        /*) ABS="$FILE" ;;
+        *) ABS="$PWD/$FILE" ;;
+    esac
+    URL="notizeditor://open?path=$(hex "$ABS")"
+    [ -n "$LINE" ] && URL="$URL&line=$LINE"
+    /usr/bin/open -b "$APP_ID" "$URL"
+done
