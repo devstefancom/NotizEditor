@@ -1,0 +1,3 @@
+/* English texts that differ from their keys. */
+
+"WELCOME_NOTE" = "Welcome to NotizEditor!\n\nEvery note is a normal text file (.txt) in your notes folder. You can also open it with Windows, TextEdit or any other editor.\n\nHow it works:\n- ⌘N creates a new note, ⇧⌘N a folder.\n- Move notes and folders on the left with drag and drop.\n- Saving happens automatically.\n- The search field on the left searches all notes, ⌘F searches this note.\n- Lists like this one continue by themselves when you press Return.\n\nThere is more in the help (⌘?). You can simply delete this note.\n";
