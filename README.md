@@ -22,7 +22,7 @@ Notizen und Texteditor für den Mac – von devstefan.com. Vorbild für den Funk
 ```
 
 Beglaubigung nutzt das notarytool-Profil `knipser-notary` (einmalig `Scripts/setup-notary.sh`).
-Vertrieb: Direkt-Download von devstefan.com, nicht Mac App Store.
+Vertrieb: Direkt-Download (von Apple beglaubigt) auf [devstefan.com/notizeditor](https://devstefan.com/notizeditor/), nicht Mac App Store.
 
 ## Testen
 
