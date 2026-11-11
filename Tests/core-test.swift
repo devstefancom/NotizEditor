@@ -108,6 +108,32 @@ enum CoreTests {
         let info = CharacterInfo("é")
         check(info.scalars.first?.code == "U+00E9" && info.utf8 == "C3 A9", "Zeichen-Info")
 
+        // Settings saved under the earlier identifier are taken over once.
+        let prefs = FileManager.default.temporaryDirectory.appendingPathComponent("notizeditor-prefs-\(UUID().uuidString)", isDirectory: true)
+        try? FileManager.default.createDirectory(at: prefs, withIntermediateDirectories: true)
+        (["notesFolder": "/alt/Notizen", "fontSize": 15.0] as NSDictionary).write(to: prefs.appendingPathComponent("de.frueher.notizeditor.plist"), atomically: true)
+        (["notesFolder": "/falsch"] as NSDictionary).write(to: prefs.appendingPathComponent("de.frueher.notizeditor.selftest.plist"), atomically: true)
+        (["notesFolder": "/eigene"] as NSDictionary).write(to: prefs.appendingPathComponent("com.neu.notizeditor.plist"), atomically: true)
+        let suite = "notizeditor-coretest-\(UUID().uuidString)"
+        if let fresh = UserDefaults(suiteName: suite) {
+            check(LegacySettings.takeOver(into: fresh, ownID: "com.neu.notizeditor", folder: prefs)
+                  && fresh.string(forKey: "notesFolder") == "/alt/Notizen" && fresh.double(forKey: "fontSize") == 15,
+                  "Einstellungen der früheren Kennung übernommen")
+            fresh.set("/neu", forKey: "notesFolder")
+            check(!LegacySettings.takeOver(into: fresh, ownID: "com.neu.notizeditor", folder: prefs)
+                  && fresh.string(forKey: "notesFolder") == "/neu", "Übernahme nur einmal")
+            fresh.removePersistentDomain(forName: suite)
+        }
+        let suite2 = "notizeditor-coretest-\(UUID().uuidString)"
+        if let own = UserDefaults(suiteName: suite2) {
+            own.set("/schon/da", forKey: "notesFolder")
+            check(!LegacySettings.takeOver(into: own, ownID: "com.neu.notizeditor", folder: prefs)
+                  && own.string(forKey: "notesFolder") == "/schon/da", "Eigene Einstellungen werden nicht überschrieben")
+            check(!LegacySettings.takeOver(into: own, ownID: "com.neu.notizeditor.selftest", folder: prefs), "Test-Builds übernehmen nichts")
+            own.removePersistentDomain(forName: suite2)
+        }
+        try? FileManager.default.removeItem(at: prefs)
+
         print(failures == 0 ? "\nAlle Tests bestanden." : "\n\(failures) Test(s) fehlgeschlagen.")
         exit(failures == 0 ? 0 : 1)
     }

@@ -33,6 +33,11 @@ final class AppSettings: ObservableObject {
     @Published var lastOpened: String { didSet { defaults.set(lastOpened, forKey: "lastOpened") } }
 
     private init() {
+        // Before anything is read: settings saved under the app's earlier identifier (see LegacySettings).
+        if let id = Bundle.main.bundleIdentifier,
+           let library = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask).first {
+            LegacySettings.takeOver(into: .standard, ownID: id, folder: library.appendingPathComponent("Preferences", isDirectory: true))
+        }
         let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         if let stored = defaults.string(forKey: "notesFolder") {
             notesFolder = stored
