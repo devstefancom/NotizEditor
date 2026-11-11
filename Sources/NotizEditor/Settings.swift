@@ -34,7 +34,17 @@ final class AppSettings: ObservableObject {
 
     private init() {
         let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        notesFolder = defaults.string(forKey: "notesFolder") ?? documents.appendingPathComponent(L("Notes"), isDirectory: true).path
+        if let stored = defaults.string(forKey: "notesFolder") {
+            notesFolder = stored
+        } else {
+            // The default name follows the language ("Notes"/"Notizen"). Remember it on the first start – and take a
+            // folder that exists already – so the notes don't seem gone after switching the Mac's language.
+            let names = [L("Notes"), "Notizen", "Notes"]
+            let existing = names.first { FileManager.default.fileExists(atPath: documents.appendingPathComponent($0).path) }
+            let chosen = documents.appendingPathComponent(existing ?? names[0], isDirectory: true).path
+            notesFolder = chosen
+            defaults.set(chosen, forKey: "notesFolder")
+        }
         fontName = defaults.string(forKey: "fontName") ?? ""
         fontSize = defaults.object(forKey: "fontSize") as? Double ?? 13
         lineSpacing = defaults.object(forKey: "lineSpacing") as? Double ?? 1.2

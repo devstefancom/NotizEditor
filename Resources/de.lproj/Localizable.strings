@@ -226,3 +226,11 @@
 "“%@” couldn't be saved." = "„%@“ konnte nicht gesichert werden.";
 "“%@” is not a text file." = "„%@“ ist keine Textdatei.";
 "“%@” was changed by another program." = "„%@“ wurde von einem anderen Programm geändert.";
+"The folder of “%@” is not available right now." = "Der Ordner von „%@“ ist gerade nicht erreichbar.";
+"Your changes are kept and saved as soon as the folder is back. Don't quit NotizEditor until then." = "Deine Änderungen bleiben erhalten und werden gesichert, sobald der Ordner wieder da ist. Beende NotizEditor bis dahin nicht.";
+"Some notes couldn't be saved." = "Einige Notizen konnten nicht gesichert werden.";
+"If you quit now, the changes in them are lost." = "Wenn du jetzt beendest, gehen die Änderungen darin verloren.";
+"Don't Quit" = "Nicht beenden";
+"Quit Anyway" = "Trotzdem beenden";
+"The result of “%@” was not inserted." = "Das Ergebnis von „%@“ wurde nicht eingefügt.";
+"The note was changed or another note was opened while the script was running." = "Die Notiz wurde geändert oder eine andere Notiz geöffnet, während das Skript lief.";

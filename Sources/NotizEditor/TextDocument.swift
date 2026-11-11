@@ -86,12 +86,37 @@ final class TextDocument: ObservableObject, Identifiable {
         if !keepSyntax { syntax = Syntax.detect(fileName: newURL.lastPathComponent) }
     }
 
+    /// Shown once that the folder is unavailable (see AppModel.checkExternalChanges).
+    var warnedFolderMissing = false
+
+    /// Replaces the file's content safely. A symbolic link stays a link (its target is written), and the file keeps
+    /// its creation date, Finder tags and other metadata – a plain "atomic" write would create a new file each time.
+    private static func write(_ data: Data, to url: URL) throws {
+        let fm = FileManager.default
+        let target = url.resolvingSymlinksInPath()
+        guard fm.fileExists(atPath: target.path),
+              let folder = try? fm.url(for: .itemReplacementDirectory, in: .userDomainMask, appropriateFor: target, create: true) else {
+            try data.write(to: target, options: .atomic)
+            return
+        }
+        defer { try? fm.removeItem(at: folder) }
+        let temporary = folder.appendingPathComponent(target.lastPathComponent)
+        do {
+            try data.write(to: temporary)
+            _ = try fm.replaceItemAt(target, withItemAt: temporary)
+        } catch {
+            try data.write(to: target, options: .atomic)   // e.g. a network drive that can't swap files
+        }
+    }
+
     /// Writes the file if there are changes. Returns false if it couldn't (the reason was shown).
     @discardableResult
     func save(force: Bool = false) -> Bool {
         saveTimer?.invalidate()
         guard isDirty || force else { return true }
         guard existsOnDisk || force else {
+            // The whole folder is gone (drive disconnected): keep the text and try again later.
+            if !FileManager.default.fileExists(atPath: url.deletingLastPathComponent().path) { return false }
             // Deleted or moved away outside NotizEditor: don't bring it back silently.
             isDirty = false
             return true
@@ -102,7 +127,8 @@ final class TextDocument: ObservableObject, Identifiable {
         if data.isEmpty, hasBOM { data = Data(TextEncodings.bom(encoding)) }
         do {
             let permissions = try? FileManager.default.attributesOfItem(atPath: url.path)[.posixPermissions]
-            try data.write(to: url, options: .atomic)
+            try Self.write(data, to: url)
+            warnedFolderMissing = false
             if let permissions { try? FileManager.default.setAttributes([.posixPermissions: permissions], ofItemAtPath: url.path) }
             fileDate = Self.modificationDate(url)
             isDirty = false
@@ -145,6 +171,8 @@ final class TextDocument: ObservableObject, Identifiable {
         }
         encoding = newEncoding
         if !TextEncodings.supportsBOM(newEncoding) { hasBOM = false }
+        // UTF-16 and UTF-32 need their mark: without it the file can't be told from binary data when it is opened again.
+        else if newEncoding != .utf8 { hasBOM = true }
         isDirty = true
         save()
     }

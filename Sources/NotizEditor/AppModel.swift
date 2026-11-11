@@ -205,8 +205,15 @@ final class AppModel: ObservableObject {
                 textView.goToLine(line)
             }
         case "new":
-            let data = (try? Data(contentsOf: file)) ?? Data()
-            try? FileManager.default.removeItem(at: file)
+            // Only the temporary file the command line tool creates (mktemp -t notizeditor). The file is deleted after
+            // reading – a link from a web page or mail must never be able to name any other path here.
+            let real = file.resolvingSymlinksInPath()
+            let temporary = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true).resolvingSymlinksInPath()
+            var isDirectory: ObjCBool = false
+            guard real.deletingLastPathComponent().path == temporary.path, real.lastPathComponent.hasPrefix("notizeditor."),
+                  FileManager.default.fileExists(atPath: real.path, isDirectory: &isDirectory), !isDirectory.boolValue else { return }
+            let data = (try? Data(contentsOf: real)) ?? Data()
+            try? FileManager.default.removeItem(at: real)
             let text = (try? TextFile.decode(data).string) ?? ""
             let formatter = DateFormatter()
             formatter.dateFormat = "yyyy-MM-dd HH.mm"
@@ -231,14 +238,30 @@ final class AppModel: ObservableObject {
 
     // MARK: - Saving
 
-    func saveAll() {
-        for document in documents.values { document.save() }
+    /// Returns false if a note still has unsaved changes afterwards.
+    @discardableResult
+    func saveAll() -> Bool {
+        var saved = true
+        for document in documents.values where !document.save() || document.isDirty { saved = false }
+        return saved
     }
 
     /// The file was changed by another program (or deleted) while it is open.
     func checkExternalChanges() {
         guard let document else { return }
         if !document.existsOnDisk {
+            // The whole folder is gone (network drive or external disk disconnected) and there is unsaved text:
+            // keep the note open – its text is saved as soon as the folder is back.
+            if document.isDirty, !FileManager.default.fileExists(atPath: document.url.deletingLastPathComponent().path) {
+                if !document.warnedFolderMissing {
+                    document.warnedFolderMissing = true
+                    let alert = NSAlert()
+                    alert.messageText = L("The folder of “%@” is not available right now.", document.name)
+                    alert.informativeText = L("Your changes are kept and saved as soon as the folder is back. Don't quit NotizEditor until then.")
+                    alert.runModal()
+                }
+                return
+            }
             documents[document.url] = nil
             otherFiles.removeAll { $0 == document.url }
             selection = nil
@@ -324,7 +347,8 @@ final class AppModel: ObservableObject {
 
     func newFolder(in folder: URL? = nil) {
         let folder = folder ?? targetFolder
-        let url = uniqueURL(in: folder, name: L("New Folder"))
+        // With the trailing slash the folder URLs of the sidebar have – otherwise the new folder isn't selected.
+        let url = URL(fileURLWithPath: uniqueURL(in: folder, name: L("New Folder")).path, isDirectory: true)
         do {
             try FileManager.default.createDirectory(at: url, withIntermediateDirectories: false)
         } catch {
@@ -349,7 +373,8 @@ final class AppModel: ObservableObject {
            !Self.textExtensions.contains((name as NSString).pathExtension.lowercased()) {
             name += ".txt"   // the extension of notes isn't shown, so it isn't typed either
         }
-        let target = url.deletingLastPathComponent().appendingPathComponent(name).standardizedFileURL
+        let target = URL(fileURLWithPath: url.deletingLastPathComponent().appendingPathComponent(name).standardizedFileURL.path,
+                         isDirectory: Self.isFolder(url))
         guard target != url else { return }
         let onlyCase = target.path.lowercased() == url.path.lowercased()
         if FileManager.default.fileExists(atPath: target.path), !onlyCase {
@@ -387,7 +412,9 @@ final class AppModel: ObservableObject {
     private func relocate(from old: URL, to new: URL) {
         func mapped(_ url: URL) -> URL {
             if url == old { return new }
-            if url.path.hasPrefix(old.path + "/") { return URL(fileURLWithPath: new.path + url.path.dropFirst(old.path.count)) }
+            if url.path.hasPrefix(old.path + "/") {
+                return URL(fileURLWithPath: new.path + url.path.dropFirst(old.path.count), isDirectory: url.hasDirectoryPath)
+            }
             return url
         }
         var moved: [URL: TextDocument] = [:]

@@ -262,6 +262,20 @@ final class EditorTextView: NSTextView {
         onEditPointsChange?()
     }
 
+    /// Undo, redo and other changes not made through `edit()` move the text under the extra insertion points:
+    /// after undo/redo they are dropped, otherwise at least kept inside the text.
+    override func didChangeText() {
+        super.didChangeText()
+        guard !extraCarets.isEmpty else { return }
+        if undoManager?.isUndoing == true || undoManager?.isRedoing == true {
+            extraCarets = []
+        } else {
+            let length = (string as NSString).length
+            extraCarets = extraCarets.filter { $0 <= length }
+        }
+        needsDisplay = true
+    }
+
     func clearExtraCarets() {
         guard !extraCarets.isEmpty else { return }
         extraCarets = []

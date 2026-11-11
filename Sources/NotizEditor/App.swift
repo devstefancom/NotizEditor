@@ -52,8 +52,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        model.saveAll()
-        return .terminateNow
+        guard !model.saveAll() else { return .terminateNow }
+        // Something could not be saved (the reason was shown, or its folder is not available): don't lose it silently.
+        let alert = NSAlert()
+        alert.messageText = L("Some notes couldn't be saved.")
+        alert.informativeText = L("If you quit now, the changes in them are lost.")
+        alert.addButton(withTitle: L("Don't Quit"))
+        alert.addButton(withTitle: L("Quit Anyway"))
+        return alert.runModal() == .alertFirstButtonReturn ? .terminateCancel : .terminateNow
     }
 
     func applicationWillResignActive(_ notification: Notification) {

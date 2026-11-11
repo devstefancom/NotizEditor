@@ -38,6 +38,15 @@ enum CoreTests {
             check(false, "Binärdatei wird abgelehnt")
         } catch TextFile.Failure.binary { check(true, "Binärdatei wird abgelehnt") }
 
+        // A Windows note saved as UTF-8 must come back byte for byte (line ends were doubled before).
+        let windowsUTF8 = Data("Grüße\r\naus\r\nHamburg\r\n".utf8)
+        if let d = try? TextFile.decode(windowsUTF8, defaultLineEnding: .lf) {
+            check(d.string == "Grüße\naus\nHamburg\n" && d.lineEnding == .crlf, "UTF-8 mit CRLF: Text ohne \\r")
+            check(TextFile.encode(d.string, encoding: d.encoding, hasBOM: d.hasBOM, lineEnding: d.lineEnding) == windowsUTF8,
+                  "UTF-8 mit CRLF bleibt beim Sichern gleich")
+        } else { check(false, "UTF-8 mit CRLF lesbar") }
+        check(TextFile.encode("a\r\nb\n", encoding: .utf8, hasBOM: false, lineEnding: .crlf) == Data("a\r\nb\r\n".utf8),
+              "Eingefügter Windows-Text verdoppelt keine Zeilenenden")
         let mixed = LineEnding.detect(in: "a\r\nb\nc\r\nd")
         check(mixed.ending == .crlf && mixed.mixed, "Gemischte Zeilenenden erkannt")
         check(LineEnding.detect(in: "a\rb\rc").ending == .cr, "CR erkannt")

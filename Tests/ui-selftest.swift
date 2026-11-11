@@ -194,10 +194,21 @@ enum SelfTest {
             model.search = ""
 
             // Command line: piped text becomes a new note
-            let temporary = FileManager.default.temporaryDirectory.appendingPathComponent("selftest-pipe.txt")
+            // (the tool writes the text to a file "notizeditor.XXXX" in the temporary folder, as mktemp does)
+            func hexPath(_ url: URL) -> String { Data(url.path.utf8).map { String(format: "%02x", $0) }.joined() }
+            // Any other file named in such a link must be left alone – the link could come from a web page.
+            let foreign = FileManager.default.temporaryDirectory.appendingPathComponent("selftest-fremd.txt")
+            try? "nicht anfassen".write(to: foreign, atomically: true, encoding: .utf8)
+            let before = model.document?.url
+            model.handle(URL(string: "notizeditor://new?path=\(hexPath(foreign))")!)
+            await wait(0.3)
+            check(FileManager.default.fileExists(atPath: foreign.path) && model.document?.url == before,
+                  "notizeditor://new löscht keine fremde Datei")
+            try? FileManager.default.removeItem(at: foreign)
+
+            let temporary = FileManager.default.temporaryDirectory.appendingPathComponent("notizeditor.selftest")
             try? "aus dem Terminal".write(to: temporary, atomically: true, encoding: .utf8)
-            let hex = Data(temporary.path.utf8).map { String(format: "%02x", $0) }.joined()
-            model.handle(URL(string: "notizeditor://new?path=\(hex)")!)
+            model.handle(URL(string: "notizeditor://new?path=\(hexPath(temporary))")!)
             await wait(0.5)
             check(model.document?.text == "aus dem Terminal" && model.document?.url.lastPathComponent.hasPrefix(L("Terminal")) == true,
                   "notizeditor: Text aus dem Terminal als neue Notiz")

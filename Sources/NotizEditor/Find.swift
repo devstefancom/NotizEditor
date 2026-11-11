@@ -128,13 +128,19 @@ final class FindModel: ObservableObject {
         guard let regex = regex(), !matches.isEmpty else { NSSound.beep(); return }
         let string = textView.string
         let template = self.template
+        // Match in the whole search area again and keep each result. Matching inside its own range would fail for
+        // patterns that look at what comes after (lookahead, \B …) – and the match would be replaced by nothing.
+        let length = (string as NSString).length
+        var area = scope ?? NSRange(location: 0, length: length)
+        if NSMaxRange(area) > length { area = NSRange(location: 0, length: length) }
         var replacements: [NSRange: String] = [:]
-        for range in matches {
-            if let match = regex.firstMatch(in: string, options: [.anchored, .withoutAnchoringBounds], range: range) {
-                replacements[range] = regex.replacementString(for: match, in: string, offset: 0, template: template)
-            }
+        regex.enumerateMatches(in: string, range: area) { match, _, _ in
+            guard let match, match.range.length > 0 else { return }
+            replacements[match.range] = regex.replacementString(for: match, in: string, offset: 0, template: template)
         }
-        textView.edit(matches, selectInserted: true) { replacements[$0] ?? "" }
+        let ranges = matches.filter { replacements[$0] != nil }
+        guard !ranges.isEmpty else { NSSound.beep(); return }
+        textView.edit(ranges, selectInserted: true) { replacements[$0] ?? (string as NSString).substring(with: $0) }
         scope = nil
         updateMatches(in: textView)
         textView.collapseToMainSelection()

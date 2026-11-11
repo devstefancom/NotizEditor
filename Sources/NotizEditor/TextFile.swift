@@ -153,7 +153,9 @@ enum TextFile {
 
     /// The bytes to write; nil when the text contains characters the encoding can't hold.
     static func encode(_ string: String, encoding: String.Encoding, hasBOM: Bool, lineEnding: LineEnding) -> Data? {
-        let text = lineEnding == .lf ? string : string.replacingOccurrences(of: "\n", with: lineEnding.characters)
+        // Normalize first: pasted Windows text still carries "\r\n", which would become "\r\r\n" below.
+        let plain = normalizeLineEndings(string)
+        let text = lineEnding == .lf ? plain : plain.replacingOccurrences(of: "\n", with: lineEnding.characters)
         guard let body = text.data(using: encoding, allowLossyConversion: false) else { return nil }
         guard hasBOM, TextEncodings.supportsBOM(encoding) else { return body }
         return Data(TextEncodings.bom(encoding)) + body
@@ -170,7 +172,8 @@ enum TextFile {
     }
 
     static func normalizeLineEndings(_ string: String) -> String {
-        guard string.contains("\r") else { return string }
+        // Not `contains("\r")`: for Swift "\r\n" is one character, so that never finds the \r of a Windows line end.
+        guard string.utf16.contains(13) else { return string }
         return string.replacingOccurrences(of: "\r\n", with: "\n").replacingOccurrences(of: "\r", with: "\n")
     }
 

@@ -86,6 +86,7 @@ enum Scripts {
             if output == "replace-selection" { output = "replace-document" }
         }
         let text = input == "none" ? "" : string.substring(with: range)
+        let textAtStart = string as String
 
         let process = Process()
         if FileManager.default.isExecutableFile(atPath: script.path) {
@@ -129,6 +130,15 @@ enum Scripts {
                     let alert = NSAlert()
                     alert.messageText = L("The script “%@” failed.", title(script))
                     alert.informativeText = failure
+                    alert.runModal()
+                    return
+                }
+                // The script ran in the background. If another note is open by now, or the text was edited, the
+                // remembered place no longer fits – putting the result there would overwrite the wrong text.
+                if output != "new-note", model.document !== document || (model.textView?.string ?? "") != textAtStart {
+                    let alert = NSAlert()
+                    alert.messageText = L("The result of “%@” was not inserted.", title(script))
+                    alert.informativeText = L("The note was changed or another note was opened while the script was running.")
                     alert.runModal()
                     return
                 }
