@@ -250,7 +250,8 @@ struct ViewCommands: Commands {
 
     var body: some Commands {
         CommandGroup(after: .toolbar) {
-            Divider()
+            // Kein Trennstrich davor: NotizEditor hat keine Symbolleisten-Einträge, der Strich stand sonst allein
+            // ganz oben im Menü „Darstellung“.
             Toggle(L("Line Numbers"), isOn: $settings.showLineNumbers)
             Toggle(L("Invisible Characters"), isOn: $settings.showInvisibles)
                 .keyboardShortcut("i", modifiers: [.command, .shift])

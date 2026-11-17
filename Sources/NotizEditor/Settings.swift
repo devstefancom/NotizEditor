@@ -223,7 +223,14 @@ struct SettingsView: View {
                     if !settings.fontName.isEmpty { Button(L("Reset")) { settings.fontName = "" } }
                 }
             }
-            Stepper(value: $settings.fontSize, in: 8...48, step: 1) { Text(L("Font size: %d pt", Int(settings.fontSize))) }
+            // Kurze Bezeichnung links, Wert und Pfeile rechts – „Schriftgröße: 13 pt“ als Ganzes war für die
+            // linke Spalte zu lang und wurde auf Deutsch links abgeschnitten.
+            LabeledContent(L("Font size")) {
+                HStack(spacing: 6) {
+                    Text("\(Int(settings.fontSize)) pt").monospacedDigit()
+                    Stepper(L("Font size"), value: $settings.fontSize, in: 8...48, step: 1).labelsHidden()
+                }
+            }
             Picker(L("Line spacing"), selection: $settings.lineSpacing) {
                 Text(L("Tight")).tag(1.0)
                 Text(L("Normal")).tag(1.2)
@@ -233,7 +240,7 @@ struct SettingsView: View {
                 ForEach(Theme.all) { Text($0.name).tag($0.id) }
             }
             Text(L("Every colour scheme has a light and a dark version and follows your Mac."))
-                .font(.caption).foregroundStyle(.secondary)
+                .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
         }
     }
 

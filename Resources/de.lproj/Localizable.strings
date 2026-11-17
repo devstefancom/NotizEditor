@@ -59,6 +59,7 @@
 "Find …" = "Suchen …";
 "Font" = "Schrift";
 "Font size: %d pt" = "Schriftgröße: %d pt";
+"Font size" = "Schriftgröße";
 "Format" = "Format";
 "Format JSON" = "JSON formatieren";
 "Formats JSON readably (selection or whole note)." = "Formatiert JSON lesbar (Auswahl oder ganze Notiz).";
