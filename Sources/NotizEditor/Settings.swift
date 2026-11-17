@@ -50,7 +50,10 @@ final class AppSettings: ObservableObject {
             notesFolder = chosen
             defaults.set(chosen, forKey: "notesFolder")
         }
-        fontName = defaults.string(forKey: "fontName") ?? ""
+        // Versteckte Systemschriften („.AppleSystemUIFontMonospaced-…“) zählen als „System (Monospace)“ –
+        // so hatte es das Schriftfenster früher gespeichert, ohne dass sich die Familie ändern ließ.
+        let gespeichert = defaults.string(forKey: "fontName") ?? ""
+        fontName = gespeichert.hasPrefix(".") ? "" : gespeichert
         fontSize = defaults.object(forKey: "fontSize") as? Double ?? 13
         lineSpacing = defaults.object(forKey: "lineSpacing") as? Double ?? 1.2
         tabWidth = defaults.object(forKey: "tabWidth") as? Int ?? 4
@@ -215,12 +218,18 @@ struct SettingsView: View {
 
     private var appearance: some View {
         Form {
-            LabeledContent(L("Font")) {
-                HStack {
-                    Text(settings.fontName.isEmpty ? L("System monospaced") : (settings.font.displayName ?? settings.fontName))
-                    Text("\(Int(settings.fontSize)) pt").foregroundStyle(.secondary)
-                    Button(L("Choose …")) { FontPickerHelper.shared.show() }
-                    if !settings.fontName.isEmpty { Button(L("Reset")) { settings.fontName = "" } }
+            // Auswahlmenü statt Schriftfenster (17.11.2026): Über das Schriftfenster des Macs kam die Familie nicht an,
+            // nur die Größe. Ein Menü speichert die Wahl sofort und ohne Umweg.
+            Picker(L("Font"), selection: $settings.fontName) {
+                Text(L("System monospaced")).tag("")
+                if !settings.fontName.isEmpty, !FontList.all.contains(where: { $0.postScript == settings.fontName }) {
+                    Text(settings.font.displayName ?? settings.fontName).tag(settings.fontName)
+                }
+                Section(L("Monospaced")) {
+                    ForEach(FontList.monospaced) { Text($0.family).tag($0.postScript) }
+                }
+                Section(L("Other fonts")) {
+                    ForEach(FontList.others) { Text($0.family).tag($0.postScript) }
                 }
             }
             // Kurze Bezeichnung links, Wert und Pfeile rechts – „Schriftgröße: 13 pt“ als Ganzes war für die
@@ -265,26 +274,26 @@ struct SettingsView: View {
     }
 }
 
-/// The macOS font panel, writing the chosen font into the settings.
+/// Schriftfamilien für das Auswahlmenü in den Einstellungen: je Familie der normale Schnitt.
+struct FontChoice: Identifiable {
+    let family: String
+    let postScript: String
+    var id: String { postScript }
+}
+
 @MainActor
-final class FontPickerHelper: NSObject, NSFontChanging {
-    static let shared = FontPickerHelper()
-
-    func show() {
+enum FontList {
+    static let all: [FontChoice] = {
         let manager = NSFontManager.shared
-        manager.target = self
-        manager.setSelectedFont(AppSettings.shared.font, isMultiple: false)
-        manager.orderFrontFontPanel(nil)
-    }
+        return manager.availableFontFamilies
+            .filter { !$0.hasPrefix(".") }
+            .compactMap { family in
+                guard let font = manager.font(withFamily: family, traits: [], weight: 5, size: 13) else { return nil }
+                return FontChoice(family: family, postScript: font.fontName)
+            }
+            .sorted { $0.family.localizedStandardCompare($1.family) == .orderedAscending }
+    }()
 
-    nonisolated func changeFont(_ sender: NSFontManager?) {
-        guard let sender else { return }
-        Task { @MainActor in
-            let font = sender.convert(AppSettings.shared.font)
-            AppSettings.shared.fontName = font.fontName
-            AppSettings.shared.fontSize = Double(font.pointSize)
-        }
-    }
-
-    nonisolated func validModesForFontPanel(_ fontPanel: NSFontPanel) -> NSFontPanel.ModeMask { [.collection, .face, .size] }
+    static var monospaced: [FontChoice] { all.filter { NSFont(name: $0.postScript, size: 13)?.isFixedPitch == true } }
+    static var others: [FontChoice] { all.filter { NSFont(name: $0.postScript, size: 13)?.isFixedPitch != true } }
 }

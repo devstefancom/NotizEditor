@@ -235,3 +235,5 @@
 "Quit Anyway" = "Trotzdem beenden";
 "The result of “%@” was not inserted." = "Das Ergebnis von „%@“ wurde nicht eingefügt.";
 "The note was changed or another note was opened while the script was running." = "Die Notiz wurde geändert oder eine andere Notiz geöffnet, während das Skript lief.";
+"Monospaced" = "Monospace";
+"Other fonts" = "Weitere Schriften";
