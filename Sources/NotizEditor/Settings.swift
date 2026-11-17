@@ -220,17 +220,19 @@ struct SettingsView: View {
         Form {
             // Auswahlmenü statt Schriftfenster (17.11.2026): Über das Schriftfenster des Macs kam die Familie nicht an,
             // nur die Größe. Ein Menü speichert die Wahl sofort und ohne Umweg.
-            Picker(L("Font"), selection: $settings.fontName) {
-                Text(L("System monospaced")).tag("")
-                if !settings.fontName.isEmpty, !FontList.all.contains(where: { $0.postScript == settings.fontName }) {
-                    Text(settings.font.displayName ?? settings.fontName).tag(settings.fontName)
-                }
-                Section(L("Monospaced")) {
-                    ForEach(FontList.monospaced) { Text($0.family).tag($0.postScript) }
-                }
-                Section(L("Other fonts")) {
-                    ForEach(FontList.others) { Text($0.family).tag($0.postScript) }
-                }
+            // Jeder Name steht im Menü in seiner eigenen Schrift (wie in Pages), darunter eine Textprobe (Wunsch 17.11.2026).
+            LabeledContent(L("Font")) {
+                FontPopUp(selection: $settings.fontName)
+            }
+            LabeledContent(L("Preview")) {
+                Text(L("Font preview text"))
+                    .font(Font(settings.font.withSize(min(max(CGFloat(settings.fontSize), 11), 22)) as CTFont))
+                    .lineLimit(3)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: 340, alignment: .leading)
+                    .padding(8)
+                    .background(RoundedRectangle(cornerRadius: 6).fill(Color(nsColor: .textBackgroundColor)))
+                    .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color(nsColor: .separatorColor)))
             }
             // Kurze Bezeichnung links, Wert und Pfeile rechts – „Schriftgröße: 13 pt“ als Ganzes war für die
             // linke Spalte zu lang und wurde auf Deutsch links abgeschnitten.
@@ -296,4 +298,66 @@ enum FontList {
 
     static var monospaced: [FontChoice] { all.filter { NSFont(name: $0.postScript, size: 13)?.isFixedPitch == true } }
     static var others: [FontChoice] { all.filter { NSFont(name: $0.postScript, size: 13)?.isFixedPitch != true } }
+}
+
+/// Schriftauswahl als echtes Aufklappmenü, in dem jeder Name in seiner eigenen Schrift erscheint. Ein SwiftUI-`Picker`
+/// kann das nicht – er zeigt alle Einträge in der Menüschrift.
+struct FontPopUp: NSViewRepresentable {
+    @Binding var selection: String
+
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+
+    func makeNSView(context: Context) -> NSPopUpButton {
+        let button = NSPopUpButton(frame: .zero, pullsDown: false)
+        button.target = context.coordinator
+        button.action = #selector(Coordinator.changed(_:))
+        button.setContentHuggingPriority(.defaultHigh, for: .horizontal)
+        fill(button)
+        return button
+    }
+
+    func updateNSView(_ button: NSPopUpButton, context: Context) {
+        context.coordinator.parent = self
+        if (button.selectedItem?.representedObject as? String) != selection { fill(button) }
+    }
+
+    private func fill(_ button: NSPopUpButton) {
+        let menu = NSMenu()
+        let size = NSFont.systemFontSize
+        menu.addItem(item(L("System monospaced"), tag: "", font: .monospacedSystemFont(ofSize: size, weight: .regular)))
+        // Eine gespeicherte Schrift, die nicht (mehr) in der Liste steht, bleibt wählbar.
+        if !selection.isEmpty, !FontList.all.contains(where: { $0.postScript == selection }) {
+            let font = NSFont(name: selection, size: size)
+            menu.addItem(item(font?.displayName ?? selection, tag: selection, font: font))
+        }
+        for (header, fonts) in [(L("Monospaced"), FontList.monospaced), (L("Other fonts"), FontList.others)] {
+            menu.addItem(.separator())
+            menu.addItem(.sectionHeader(title: header))
+            for choice in fonts {
+                menu.addItem(item(choice.family, tag: choice.postScript, font: NSFont(name: choice.postScript, size: size)))
+            }
+        }
+        button.menu = menu
+        let index = menu.items.firstIndex { ($0.representedObject as? String) == selection } ?? 0
+        button.selectItem(at: index)
+    }
+
+    private func item(_ title: String, tag: String, font: NSFont?) -> NSMenuItem {
+        let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
+        item.representedObject = tag
+        // Symbolschriften (z. B. Webdings) können ihren eigenen Namen nicht darstellen – dann normale Menüschrift.
+        if let font, font.coveredCharacterSet.isSuperset(of: CharacterSet(charactersIn: title)) {
+            item.attributedTitle = NSAttributedString(string: title, attributes: [.font: font])
+        }
+        return item
+    }
+
+    @MainActor
+    final class Coordinator: NSObject {
+        var parent: FontPopUp
+        init(_ parent: FontPopUp) { self.parent = parent }
+        @objc func changed(_ sender: NSPopUpButton) {
+            parent.selection = sender.selectedItem?.representedObject as? String ?? ""
+        }
+    }
 }
