@@ -165,7 +165,7 @@ struct SettingsView: View {
             appearance.tabItem { Label(L("Appearance"), systemImage: "paintpalette") }
             tools.tabItem { Label(L("Tools"), systemImage: "terminal") }
         }
-        .frame(width: 520)
+        .frame(width: 560)
         .padding(20)
     }
 
@@ -207,10 +207,15 @@ struct SettingsView: View {
             Toggle(L("Show invisible characters"), isOn: $settings.showInvisibles)
             Toggle(L("Highlight current line"), isOn: $settings.highlightCurrentLine)
             Toggle(L("Highlight all occurrences of the selected word"), isOn: $settings.highlightMatches)
-            HStack {
-                Toggle(L("Show page guide at column"), isOn: $settings.showPageGuide)
-                TextField("", value: $settings.pageGuideColumn, format: .number).frame(width: 50)
-                    .disabled(!settings.showPageGuide)
+            // Das Zahlenfeld steckt in der Beschriftung des Häkchens: Eine HStack-Zeile setzte das Häkchen im Formular
+            // sonst in die linke Spalte (gemeldet 17.11.2026).
+            Toggle(isOn: $settings.showPageGuide) {
+                HStack(spacing: 8) {
+                    Text(L("Show page guide at column"))
+                    TextField("", value: $settings.pageGuideColumn, format: .number)
+                        .labelsHidden().frame(width: 50)
+                        .disabled(!settings.showPageGuide)
+                }
             }
             Toggle(L("Check spelling while typing"), isOn: $settings.spellCheck)
         }
@@ -224,6 +229,14 @@ struct SettingsView: View {
             LabeledContent(L("Font")) {
                 FontPopUp(selection: $settings.fontName)
             }
+            // Kurze Bezeichnung links, Wert und Pfeile rechts – „Schriftgröße: 13 pt“ als Ganzes war für die
+            // linke Spalte zu lang und wurde auf Deutsch links abgeschnitten.
+            LabeledContent(L("Font size")) {
+                HStack(spacing: 6) {
+                    Text("\(Int(settings.fontSize)) pt").monospacedDigit()
+                    Stepper(L("Font size"), value: $settings.fontSize, in: 8...48, step: 1).labelsHidden()
+                }
+            }
             LabeledContent(L("Preview")) {
                 Text(L("Font preview text"))
                     .font(Font(settings.font.withSize(min(max(CGFloat(settings.fontSize), 11), 22)) as CTFont))
@@ -233,14 +246,6 @@ struct SettingsView: View {
                     .padding(8)
                     .background(RoundedRectangle(cornerRadius: 6).fill(Color(nsColor: .textBackgroundColor)))
                     .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color(nsColor: .separatorColor)))
-            }
-            // Kurze Bezeichnung links, Wert und Pfeile rechts – „Schriftgröße: 13 pt“ als Ganzes war für die
-            // linke Spalte zu lang und wurde auf Deutsch links abgeschnitten.
-            LabeledContent(L("Font size")) {
-                HStack(spacing: 6) {
-                    Text("\(Int(settings.fontSize)) pt").monospacedDigit()
-                    Stepper(L("Font size"), value: $settings.fontSize, in: 8...48, step: 1).labelsHidden()
-                }
             }
             Picker(L("Line spacing"), selection: $settings.lineSpacing) {
                 Text(L("Tight")).tag(1.0)
