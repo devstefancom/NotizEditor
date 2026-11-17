@@ -54,6 +54,8 @@ enum HelpContent {
                               de: "Um deine Notizen auf mehreren Rechnern zu haben, wähle einen Ordner in iCloud Drive oder Dropbox: NotizEditor → Einstellungen → Allgemein → Notizen-Ordner.")),
                 .text(HelpText("You can also open any other text file: **File → Open …** (⌘O), drag it on the NotizEditor icon in the Dock, or right-click it in the Finder → **Open With → NotizEditor**. It then appears under **Other Files**.",
                                de: "Du kannst auch jede andere Textdatei öffnen: **Ablage → Öffnen …** (⌘O), auf das NotizEditor-Symbol im Dock ziehen, oder im Finder Rechtsklick → **Öffnen mit → NotizEditor**. Sie erscheint dann unter **Andere Dateien**.")),
+                .tip(HelpText("To open all text files with NotizEditor by double-click: in the Finder select a .txt file → **File → Get Info** → **Open with: NotizEditor** → **Change All …**. If you had set this up with version 1.0.0, please do it once again – since 1.0.1 the app has a new internal identifier.",
+                              de: "Damit sich alle Textdateien per Doppelklick in NotizEditor öffnen: Im Finder eine .txt-Datei auswählen → **Ablage → Informationen** → **Öffnen mit: NotizEditor** → **Alle ändern …**. Hattest du das mit Version 1.0.0 eingestellt, mach es bitte einmal neu – seit 1.0.1 hat die App eine neue interne Kennung.")),
             ]),
         HelpTopic(
             id: "find", icon: "magnifyingglass",
